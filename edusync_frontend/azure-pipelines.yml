@@ -1,0 +1,43 @@
+# Node.js with React
+# Build and deploy a React application to Azure Static Web Apps
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+  - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'EduSync-Azure-Connection' # This should match your Azure DevOps service connection name
+  appName: 'edusync-frontend' # Replace with your Static Web App name
+  appLocation: '/' # Root of your React app
+  apiLocation: 'api' # API folder location, if any
+  outputLocation: 'dist' # Build output folder
+  azure_static_web_apps_api_token: '1dad35460905429ba80c92f629f349ca140fbe9fa0b9ab6c5d8450bffe44fd6506-c763c607-7944-478f-b840-f9473ebe512600f211200c2f9d0f'
+
+steps:
+- task: NodeTool@0
+  displayName: 'Install Node.js'
+  inputs:
+    versionSpec: '20.x'
+
+- script: |
+    npm install
+    npm run build
+  displayName: 'npm install and build'
+
+- task: AzureStaticWebApp@0
+  displayName: 'Deploy to Azure Static Web Apps'
+  inputs:
+    app_location: '$(appLocation)'
+    api_location: '$(apiLocation)'
+    output_location: '$(outputLocation)'
+    azure_static_web_apps_api_token: '$(azure_static_web_apps_api_token)'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Build Artifacts'
+  inputs:
+    PathtoPublish: '$(outputLocation)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container' 
