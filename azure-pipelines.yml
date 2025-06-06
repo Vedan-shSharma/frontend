@@ -1,0 +1,42 @@
+trigger:
+  - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'EduSync-Azure-Connection' # Azure DevOps service connection name
+  appName: 'edusync-frontend' # Your Static Web App name
+  appLocation: '/' # Root of your React app
+  apiLocation: 'api' # API folder location, if any
+  outputLocation: 'dist' # Build output folder
+  azure_static_web_apps_api_token: '$(azure_static_web_apps_api_token)' # Set as a secret variable in Azure DevOps
+  VITE_API_URL: 'https://edusyncvirendraback-hbcaavg5d2afaxg0.centralindia-01.azurewebsites.net/api' # Your backend API URL
+
+steps:
+- task: NodeTool@0
+  displayName: 'Install Node.js'
+  inputs:
+    versionSpec: '20.x'
+
+- script: |
+    npm install
+    npm run build
+  displayName: 'npm install and build'
+  env:
+    VITE_API_URL: $(VITE_API_URL)
+
+- task: AzureStaticWebApp@0
+  displayName: 'Deploy to Azure Static Web Apps'
+  inputs:
+    app_location: '$(appLocation)'
+    api_location: '$(apiLocation)'
+    output_location: '$(outputLocation)'
+    azure_static_web_apps_api_token: '$(azure_static_web_apps_api_token)'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Build Artifacts'
+  inputs:
+    PathtoPublish: '$(outputLocation)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
