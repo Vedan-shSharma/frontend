@@ -10,7 +10,7 @@ variables:
   appLocation: '/'
   apiLocation: 'api'
   outputLocation: 'dist'
-  VITE_API_URL: 'https://edusyncvirendraback-hbcaavg5d2afaxg0.centralindia-01.azurewebsites.net/api'
+  VITE_API_URL: 'https://edusync-app-cna0dpfbfsa6gzgw.centralindia-01.azurewebsites.net/api'
 
 steps:
 - task: NodeTool@0
