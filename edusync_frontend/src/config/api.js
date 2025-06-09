@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use environment variable with fallback to the hardcoded URL
-const API_URL = import.meta.env.VITE_API_URL || "https://edusyncvirendraback-hbcaavg5d2afaxg0.centralindia-01.azurewebsites.net/api";
+const API_URL = import.meta.env.VITE_API_URL || "https://edusync-app-cna0dpfbfsa6gzgw.centralindia-01.azurewebsites.net/api";
 
 // Create axios instance with default config
 const api = axios.create({

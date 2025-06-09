@@ -8,6 +8,7 @@ import InstructorAnalytics from "../Components/InstructorAnalytics";
 import LoadingSpinner from "../Components/LoadingSpinner";
 import Notification from "../Components/Notification";
 import FileUpload from "../Components/FileUpload";
+import EnrollmentAnalytics from "../Components/EnrollmentAnalytics";
 import { Container, Row, Col, Button, Collapse, Card, Navbar, NavDropdown, Spinner } from 'react-bootstrap';
 import { BiBook, BiListUl, BiBarChart, BiUpload, BiUserCircle, BiChevronDown } from 'react-icons/bi';
 
@@ -195,7 +196,7 @@ const InstructorDashboard = () => {
           <Card.Header className="bg-light d-flex justify-content-between align-items-center cursor-pointer" onClick={() => handleSectionToggle('analytics')}>
              <span className="d-flex align-items-center gap-2 text-primary fw-bold">
                 <BiBarChart size={20}/>
-                Student Performance Analytics
+                Analytics Dashboard
              </span>
              <BiChevronDown className={`text-muted ${openSection === 'analytics' ? 'rotate-180' : ''}`} style={{ transition: 'transform 0.3s ease' }}/>
           </Card.Header>
@@ -207,7 +208,16 @@ const InstructorDashboard = () => {
                   <p className="mt-2 text-primary">Loading analytics...</p>
                  </div>
               ) : (
-                <InstructorAnalytics />
+                <>
+                  <div className="mb-4">
+                    <h3 className="h5 text-primary mb-3">Course Enrollment Analytics</h3>
+                    <EnrollmentAnalytics />
+                  </div>
+                  <div>
+                    <h3 className="h5 text-primary mb-3">Student Performance Analytics</h3>
+                    <InstructorAnalytics />
+                  </div>
+                </>
               )}
             </Card.Body>
           </Collapse>

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Define the API URL
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const API_URL = import.meta.env.VITE_API_URL || 'https://edusync-app-cna0dpfbfsa6gzgw.centralindia-01.azurewebsites.net/api';
 
 // Create an axios instance with default config
 const api = axios.create({

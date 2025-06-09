@@ -11,6 +11,7 @@ function StudentProgressTracker() {
   const { user } = useAuth();
   const [assessmentHistory, setAssessmentHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [courses, setCourses] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -31,30 +32,28 @@ function StudentProgressTracker() {
       setLoading(true);
     }
     try {
-      // Fetch all results
-      const resultsRes = await api.get('/Result');
-      // Filter results for current user
-      const userResults = resultsRes.data.filter(result => result.userId === user.userId);
+      setError(null);
+      console.log('Fetching assessment history for user:', user.userId);
       
-      // Fetch all assessments to get assessment titles
-      const assessmentsRes = await api.get('/Assessment');
+      // Fetch results for the current user
+      const resultsRes = await api.get(`/Result/by-user/${user.userId}`);
+      console.log('Results response:', resultsRes.data);
       
-      // Fetch all courses
-      const coursesRes = await api.get('/Course');
-      setCourses(coursesRes.data);
+      // No need to filter results since they're already filtered by user
+      const userResults = resultsRes.data;
+      console.log('User results:', userResults);
       
       // Map results to include assessment titles and calculate percentages
       const history = userResults.map(result => {
-        const assessment = assessmentsRes.data.find(a => a.assessmentId === result.assessmentId);
+        const assessment = result.assessment;
         const maxScore = assessment ? JSON.parse(assessment.questions).length : 0;
         const percentage = Math.round((result.score / maxScore) * 100);
-        const course = coursesRes.data.find(c => c.courseId === assessment?.courseId);
         
         return {
           attemptId: result.resultId,
           assessmentId: result.assessmentId,
           assessmentTitle: assessment?.title || 'Unknown Assessment',
-          courseTitle: course?.title || 'Unknown Course',
+          courseTitle: assessment?.course?.title || 'Unknown Course',
           score: result.score,
           maxScore: maxScore,
           percentage: percentage,
@@ -62,10 +61,11 @@ function StudentProgressTracker() {
         };
       });
       
+      console.log('Processed assessment history:', history);
       setAssessmentHistory(history);
     } catch (error) {
       console.error("Error fetching assessment history:", error);
-      toast.error("Failed to fetch assessment history");
+      setError("Failed to fetch assessment history. Please try again later.");
       setAssessmentHistory([]);
     } finally {
       if (showLoading) {
@@ -77,6 +77,7 @@ function StudentProgressTracker() {
 
   // Initial fetch
   useEffect(() => {
+    console.log('StudentProgressTracker mounted');
     fetchAssessmentHistory(true);
   }, [fetchAssessmentHistory]);
 
@@ -95,7 +96,8 @@ function StudentProgressTracker() {
 
   // Listen for custom event when assessment is completed
   useEffect(() => {
-    const handleAssessmentComplete = () => {
+    const handleAssessmentComplete = (event) => {
+      console.log('Assessment completed event received:', event.detail);
       if (!isRefreshing) {
         setIsRefreshing(true);
         fetchAssessmentHistory(false);
@@ -106,18 +108,32 @@ function StudentProgressTracker() {
     return () => window.removeEventListener('assessmentCompleted', handleAssessmentComplete);
   }, [fetchAssessmentHistory, isRefreshing]);
 
+  if (error) {
+    return (
+      <Alert variant="danger" className="m-3">
+        <Alert.Heading>Error Loading Progress</Alert.Heading>
+        <p>{error}</p>
+        <div className="d-flex justify-content-end">
+          <Button variant="outline-danger" onClick={() => fetchAssessmentHistory(true)}>
+            Retry
+          </Button>
+        </div>
+      </Alert>
+    );
+  }
+
   if (loading) {
     return (
-      <Container className="text-center py-5 min-vh-100">
+      <div className="text-center py-5">
         <Spinner animation="border" variant="primary" style={{ color: '#1a73e8' }} />
-        <p className="mt-3 text-primary">Loading assessment history...</p>
-      </Container>
+        <p className="mt-3 text-primary">Loading your progress...</p>
+      </div>
     );
   }
 
   if (assessmentHistory.length === 0) {
     return (
-      <Container className="text-center py-5 min-vh-100 d-flex flex-column align-items-center justify-content-center">
+      <div className="text-center py-5">
         <img
           src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
           alt="No Data"
@@ -126,16 +142,16 @@ function StudentProgressTracker() {
         <p className="text-muted fw-medium fs-5">
           No assessment attempts yet. Complete assessments to track your progress.
         </p>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container fluid className="py-4">
+    <div className="py-4">
       <Row className="g-4">
         {assessmentHistory.map((assessment) => (
           <Col key={assessment.attemptId} md={6} lg={4}>
-            <Card className="h-100 border-0">
+            <Card className="h-100 border-0 shadow-sm">
               <Card.Header className="bg-light d-flex justify-content-between align-items-center">
                 <Card.Title as="h5" className="text-primary mb-0 me-2">{assessment.assessmentTitle}</Card.Title>
                 <Badge bg="primary" className="px-2 py-1">
@@ -200,7 +216,7 @@ function StudentProgressTracker() {
           )}
         </Modal.Body>
       </Modal>
-    </Container>
+    </div>
   );
 }
 

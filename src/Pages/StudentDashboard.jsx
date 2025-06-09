@@ -18,15 +18,25 @@ const StudentDashboard = () => {
   const [courses, setCourses] = useState([]);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [openSection, setOpenSection] = useState(null);
+  const [openSection, setOpenSection] = useState('progress'); // Set progress section open by default
   const [notification, setNotification] = useState(null);
   const [viewCourse, setViewCourse] = useState(null);
   const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
+    console.log('StudentDashboard mounted');
     fetchCourses();
     fetchEnrolledCourses();
-    // eslint-disable-next-line
+
+    // Listen for assessment completion to open progress section
+    const handleAssessmentComplete = () => {
+      console.log('Assessment completed event received in StudentDashboard');
+      setOpenSection('progress');
+      showNotification("Assessment completed! View your progress below.", 'success');
+    };
+
+    window.addEventListener('assessmentCompleted', handleAssessmentComplete);
+    return () => window.removeEventListener('assessmentCompleted', handleAssessmentComplete);
   }, []);
 
   const fetchCourses = async () => {
@@ -113,6 +123,7 @@ const StudentDashboard = () => {
   };
 
   const handleSectionToggle = (section) => {
+    console.log('Toggling section:', section, 'Current open section:', openSection);
     setOpenSection(openSection === section ? null : section);
   };
   
@@ -278,7 +289,7 @@ const StudentDashboard = () => {
           </Collapse>
         </Card>
 
-        {/* Available Assessments Section */}
+        {/* Assessments Section */}
         <Card className="mb-3 border-0 shadow-sm">
           <Card.Header className="bg-light d-flex justify-content-between align-items-center cursor-pointer" onClick={() => handleSectionToggle('assessments')}>
              <span className="d-flex align-items-center gap-2 text-primary fw-bold">
@@ -289,39 +300,39 @@ const StudentDashboard = () => {
           </Card.Header>
           <Collapse in={openSection === 'assessments'}>
             <Card.Body>
-              {loading ? (
-                 <div className="text-center py-3">
-                  <Spinner animation="border" variant="primary" style={{ color: '#1a73e8' }} />
-                  <p className="mt-2 text-primary">Loading assessments...</p>
-                 </div>
-              ) : (
-                <StudentAssessmentList onNewAssessment={handleNewAssessment} />
-              )}
+              <StudentAssessmentList onNewAssessment={handleNewAssessment} />
             </Card.Body>
           </Collapse>
         </Card>
 
-        {/* Your Progress Section */}
+        {/* Progress Section */}
         <Card className="mb-3 border-0 shadow-sm">
-          <Card.Header className="bg-light d-flex justify-content-between align-items-center cursor-pointer" onClick={() => handleSectionToggle('progress')}>
-             <span className="d-flex align-items-center gap-2 text-primary fw-bold">
-                <BiBarChart size={20}/>
-                Your Progress
-             </span>
-             <BiChevronDown className={`text-muted ${openSection === 'progress' ? 'rotate-180' : ''}`} style={{ transition: 'transform 0.3s ease' }}/>
+          <Card.Header 
+            className="bg-light d-flex justify-content-between align-items-center cursor-pointer" 
+            onClick={() => handleSectionToggle('progress')}
+            style={{ cursor: 'pointer' }}
+          >
+            <span className="d-flex align-items-center gap-2 text-primary fw-bold">
+              <BiBarChart size={20}/>
+              Your Progress
+            </span>
+            <BiChevronDown 
+              className={`text-muted ${openSection === 'progress' ? 'rotate-180' : ''}`} 
+              style={{ transition: 'transform 0.3s ease' }}
+            />
           </Card.Header>
-          <Collapse in={openSection === 'progress'}>
+          <div 
+            style={{ 
+              maxHeight: openSection === 'progress' ? '2000px' : '0',
+              overflow: 'hidden',
+              transition: 'max-height 0.3s ease-in-out'
+            }}
+          >
             <Card.Body>
-              {loading ? (
-                 <div className="text-center py-3">
-                  <Spinner animation="border" variant="primary" style={{ color: '#1a73e8' }} />
-                  <p className="mt-2 text-primary">Loading progress tracker...</p>
-                 </div>
-              ) : (
-                 openSection === 'progress' && <StudentProgressTracker />
-              )}
+              {console.log('Rendering StudentProgressTracker, openSection:', openSection)}
+              <StudentProgressTracker />
             </Card.Body>
-          </Collapse>
+          </div>
         </Card>
 
       </Container>

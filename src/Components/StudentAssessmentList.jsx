@@ -3,43 +3,44 @@ import { api } from '../config/api';
 import { useAuth } from "../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Container, Row, Col, Card, Button, ListGroup, Badge, Alert, Spinner } from "react-bootstrap";
-import { BiArrowBack, BiCheckCircle } from "react-icons/bi";
+import { BiArrowBack, BiCheckCircle, BiLockAlt } from "react-icons/bi";
 
 function StudentAssessmentList({ onNewAssessment }) {
   const { user } = useAuth();
   const [assessments, setAssessments] = useState([]);
-  const [courses, setCourses] = useState([]);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    fetchAssessments();
-    fetchCourses();
+    fetchData();
   }, []);
 
-  const fetchCourses = async () => {
-    try {
-      const res = await api.get('/Course');
-      setCourses(res.data);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-      setCourses([]);
-    }
-  };
-
-  const fetchAssessments = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/Assessment');
-      setAssessments(res.data);
+      // Fetch enrolled courses first
+      const enrolledRes = await api.get(`/CourseEnrollment/student/${user.userId}`);
+      setEnrolledCourses(enrolledRes.data);
+
+      // Fetch all assessments
+      const assessmentsRes = await api.get('/Assessment');
+      
+      // Filter assessments to only show those from enrolled courses
+      const filteredAssessments = assessmentsRes.data.filter(assessment =>
+        enrolledRes.data.some(enrollment => enrollment.courseId === assessment.courseId)
+      );
+      
+      setAssessments(filteredAssessments);
     } catch (error) {
-      console.error("Error fetching assessments:", error);
+      console.error("Error fetching data:", error);
       if (error.response?.status === 401) {
         alert("Your session has expired. Please log in again.");
       }
       setAssessments([]);
+      setEnrolledCourses([]);
     } finally {
       setLoading(false);
     }
@@ -47,6 +48,16 @@ function StudentAssessmentList({ onNewAssessment }) {
 
   const handleAttempt = async (assessment) => {
     try {
+      // Verify enrollment before allowing attempt
+      const isEnrolled = enrolledCourses.some(
+        enrollment => enrollment.courseId === assessment.courseId
+      );
+
+      if (!isEnrolled) {
+        alert("You must be enrolled in this course to attempt the assessment.");
+        return;
+      }
+
       const res = await api.get(`/Assessment/${assessment.assessmentId}`);
       setSelectedAssessment(res.data);
       setAnswers({});
@@ -102,18 +113,24 @@ function StudentAssessmentList({ onNewAssessment }) {
         throw new Error('No response data received');
       }
       
-      // Calculate percentage based on the response
-      const percentage = Math.round((res.data.score / questions.length) * 100);
-      
+      // Set the result with the response data
       setResult({
-        ...res.data,
-        percentage,
-        maxScore: questions.length,
-        passed: percentage >= 50
+        score: res.data.score,
+        total: res.data.total,
+        percentage: res.data.percentage,
+        passed: res.data.status === 'Passed'
       });
       
       // Clear answers after successful submission
       setAnswers({});
+      
+      // Dispatch custom event for assessment completion
+      window.dispatchEvent(new CustomEvent('assessmentCompleted', {
+        detail: {
+          assessmentId: selectedAssessment.assessmentId,
+          result: res.data
+        }
+      }));
       
     } catch (error) {
       console.error("Error submitting assessment:", error);
@@ -248,48 +265,57 @@ function StudentAssessmentList({ onNewAssessment }) {
       <h2 className="text-primary mb-4">Available Assessments</h2>
       {assessments.length === 0 ? (
         <Alert variant="info" className="text-center py-4">
-          No assessments available at the moment.
+          {enrolledCourses.length === 0 ? (
+            <>
+              <BiLockAlt size={32} className="text-primary mb-3" />
+              <p className="mb-0">Enroll in courses to access their assessments.</p>
+            </>
+          ) : (
+            "No assessments available for your enrolled courses."
+          )}
         </Alert>
       ) : (
         <Row className="g-4">
-          {assessments.map((assessment) => (
+          {assessments.map((assessment) => {
+            const isEnrolled = enrolledCourses.some(
+              enrollment => enrollment.courseId === assessment.courseId
+            );
+
+            return (
             <Col key={assessment.assessmentId} md={6} lg={4}>
-              <Card className="h-100 border-0">
-                <Card.Header className="bg-light">
-                  <h3 className="h5 mb-0 text-primary">{assessment.title}</h3>
-                </Card.Header>
-                <Card.Body>
-                  <Badge bg="info" className="mb-3">
-                    {courses.find(c => c.courseId === assessment.courseId)?.title || 'Unknown Course'}
-                  </Badge>
-                  <ListGroup variant="flush" className="mb-3">
-                    <ListGroup.Item className="border-0 px-0">
-                      <small className="text-muted">Instructor:</small>
-                      <div>{assessment.instructorName || 'Unknown'}</div>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="border-0 px-0">
-                      <small className="text-muted">Total Questions:</small>
-                      <div>{JSON.parse(assessment.questions).length}</div>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="border-0 px-0">
-                      <small className="text-muted">Maximum Score:</small>
-                      <div>{assessment.maxScore}</div>
-                    </ListGroup.Item>
-                  </ListGroup>
-                </Card.Body>
-                <Card.Footer className="bg-white border-0">
+                <Card className="h-100 border-0 shadow-sm">
+                  <Card.Body className="d-flex flex-column">
+                    <Card.Title className="text-primary h5 mb-2">
+                      {assessment.title}
+                    </Card.Title>
+                    <Card.Text className="text-muted mb-3">
+                      Course: {assessment.courseTitle}
+                    </Card.Text>
+                    <Card.Text className="text-muted mb-3 small">
+                      Instructor: {assessment.instructorName}
+                    </Card.Text>
+                    <div className="mt-auto">
                   <Button
-                    variant="danger"
+                        variant="primary"
                     onClick={() => handleAttempt(assessment)}
                     className="w-100"
-                    style={{ backgroundColor: '#e91e63', borderColor: '#e91e63' }}
+                        disabled={!isEnrolled}
                   >
-                    Attempt Assessment
+                        {isEnrolled ? (
+                          "Start Assessment"
+                        ) : (
+                          <>
+                            <BiLockAlt className="me-2" />
+                            Enroll to Access
+                          </>
+                        )}
                   </Button>
-                </Card.Footer>
+                    </div>
+                  </Card.Body>
               </Card>
             </Col>
-          ))}
+            );
+          })}
         </Row>
       )}
     </Container>
