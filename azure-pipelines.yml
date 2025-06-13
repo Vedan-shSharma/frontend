@@ -5,11 +5,10 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  azureSubscription: 'EduSync-Azure-Connection'
-  appName: 'edusync-frontend'
-  appLocation: '/'
-  apiLocation: 'api'
-  outputLocation: 'dist'
+  appName: 'edusync-frontend' # Your Static Web App name
+  appLocation: '/'            # Root of your React app
+  apiLocation: 'api'          # API folder location, if any (set to '' if not used)
+  outputLocation: 'dist'      # Build output folder (use 'build' for CRA, 'dist' for Vite)
   VITE_API_URL: 'https://edusync-app-cna0dpfbfsa6gzgw.centralindia-01.azurewebsites.net/api'
 
 steps:
@@ -31,49 +30,7 @@ steps:
     app_location: '$(appLocation)'
     api_location: '$(apiLocation)'
     output_location: '$(outputLocation)'
-    azure_static_web_apps_api_token: '$(azure_static_web_apps_api_token)'
-
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Build Artifacts'
-  inputs:
-    PathtoPublish: '$(outputLocation)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
-# Node.js with React
-# Build and deploy a React application to Azure Static Web Apps
-# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
-
-trigger:
-  - master
-
-pool:
-  vmImage: 'ubuntu-latest'
-
-variables:
-  azureSubscription: 'EduSyncDevOpsConnection' # Replace with your Azure subscription name
-  appName: 'edusync-frontend' # Replace with your Static Web App name
-  appLocation: '/' # Root of your React app
-  apiLocation: 'api' # API folder location, if any
-  outputLocation: 'dist' # Build output folder
-
-steps:
-- task: NodeTool@0
-  displayName: 'Install Node.js'
-  inputs:
-    versionSpec: '20.x'
-
-- script: |
-    npm install
-    npm run build
-  displayName: 'npm install and build'
-
-- task: AzureStaticWebApp@0
-  displayName: 'Deploy to Azure Static Web Apps'
-  inputs:
-    app_location: '$(appLocation)'
-    api_location: '$(apiLocation)'
-    output_location: '$(outputLocation)'
-    azure_static_web_apps_api_token: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)' # Set this in Azure DevOps variables
+    azure_static_web_apps_api_token: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)' # Set this as a secret variable
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Build Artifacts'
